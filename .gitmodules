@@ -1,0 +1,6 @@
+[submodule "lib/my_c_draw"]
+	path = lib/my_c_draw
+	url = git@github.com:1wsx10/my_c_draw
+[submodule "lib/vector"]
+	path = lib/vector
+	url = git@github.com:1wsx10/vector
