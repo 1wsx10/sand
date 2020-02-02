@@ -1,4 +1,4 @@
-SOURCES=main.cpp libdraw.cpp
+SOURCES=main.cpp libdraw.cpp debug/print_mutex.cpp
 OBJECTS=$(SOURCES:.cpp=.o)
 DFILES=$(SOURCES:.cpp=.d)
 PROGRAM=a.out
@@ -12,15 +12,16 @@ OPTIMISATIONS=-g
 #OPTIMISATIONS=-O3
 #OPTIMISATIONS= -Ofast -march=native
 # remove pedantic. this uses FB code, portability is already out the window
-CFLAGS= $(OPTIMISATIONS) $(RTTI) $(EXCEPTIONS) -std=c++2a -Wall $(DFILERULES)
-LDFLAGS=$(CFLAGS) #-lncurses -lm -pthread
+#CFLAGS= $(OPTIMISATIONS) $(RTTI) $(EXCEPTIONS) -std=c++2a -Wall $(DFILERULES)
+CFLAGS= $(OPTIMISATIONS) $(RTTI) $(EXCEPTIONS) -std=c++17 $(DFILERULES)
+LDFLAGS=$(CFLAGS) -pthread #-lncurses -lm
 CC=g++
 DOT_A_FILES= lib/vector/libvector.a lib/my_c_draw/libdraw.a
 #INC= lib/
 
 # "lib/vector/libvector.a" becomes "-Llib/vector/"
 L=$(addprefix -L,$(dir $(DOT_A_FILES)))
-INC=$(addprefix -I,$(dir $(DOT_A_FILES)))
+INC=$(addprefix -I,$(dir $(DOT_A_FILES))) $(addprefix -I,$(dir $(SOURCES)))
 # "lib/vector/libvector.a" becomes "-lvector"
 l=$(addprefix -l,$(notdir $(basename $(subst /lib,/,$(DOT_A_FILES)))))
 
@@ -45,8 +46,7 @@ $(PROGRAM): $(OBJECTS) $(DOT_A_FILES) #SAY_LINKING
 #	@echo '     compiling      '
 #	@echo '===================='
 
-%.o: %.cpp #SAY_COMPILING
-	#$(CC) -c $< -o $@ -I'$(INC)' $(CFLAGS) $(VARFLAGS)
+%.o: %.cpp makefile #SAY_COMPILING
 	$(CC) -c $< -o $@ $(INC) $(CFLAGS) $(VARFLAGS)
 	@echo
 
