@@ -4,8 +4,8 @@
 #include <cstddef>
 #include <type_traits>
 
-const unsigned WORLD_HEIGHT = 50;
-const unsigned WORLD_WIDTH = 80;
+extern const unsigned WORLD_HEIGHT = 50;
+extern const unsigned WORLD_WIDTH = 80;
 
 template<typename ENUM_T>
 constexpr auto to_underlying(ENUM_T my_enum) -> std::underlying_type_t<ENUM_T> {
@@ -32,7 +32,15 @@ struct grain {
 	static_assert(sizeof(colours) / sizeof(*colours) == to_underlying(type::COUNT), "missing a grain colour");
 
 	grain::type type;
+	bool is_active = false;
 };
 
 
+template<typename NUM>
+struct vec2 {
+	NUM x;
+	NUM y;
+};
 
+using vec2u = vec2<unsigned>;
+using vec2i = vec2<int>;

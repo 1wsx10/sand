@@ -27,22 +27,31 @@ bool should_quit() {
 	return g_quit;
 }
 
+// TODO
+//  - version that respects aspect ratio
+//  - add panning & zooming, currently we view the entire world
+vec2u get_world_coords_stretch(vec2u screen_coords, vec2u screen_size) {
+	return {
+		(screen_coords.x * WORLD_WIDTH) / screen_size.x,
+		(screen_coords.y * WORLD_HEIGHT) / screen_size.y
+	};
+}
+
 void draw_loop() {
 	thread_name = "draw";
 	auto fb = framebuf::make_unique();
+	vec2u screen_size{fb->vinfo.xres, fb->vinfo.yres};
 
 	while(!should_quit()) {
-
 		signal_begin_draw.notify_all();
 
-		for(unsigned i = 0; i < WORLD_HEIGHT; i++) {
-			{
-				LG_alias g(world_mutex, "draw_loop");
-				for(unsigned j = 0; j < WORLD_WIDTH; j++) {
-					
-					pixel_ pix(i, j, (grain::colours[to_underlying(world[i][j].type)]));
-					draw(fb.get(), &pix);
-				}
+		for(unsigned x = 0; x < screen_size.x; x++) {
+			LG_alias g(world_mutex, "draw_loop");
+			for(unsigned y = 0; y < screen_size.y; y++) {
+				vec2u world_coords = get_world_coords_stretch({x,y}, screen_size);
+
+				pixel_ pix(x, y, (grain::colours[to_underlying(world[world_coords.y][world_coords.x].type)]));
+				draw(fb.get(), &pix);
 			}
 		}
 
@@ -53,22 +62,18 @@ int main(int argc, char **argv) {
 	thread_name = "main";
 	std::thread draw_thread(draw_loop);
 
-	struct vec2u {
-		unsigned x;
-		unsigned y;
-	};
 
 
 	vec2u top_left = {10, 10};
 	vec2u bottom_right = {70, 40};
 	{
 		LG_alias g(world_mutex, "main_loop");
-		for(unsigned i = top_left.y; i < bottom_right.y; i++) {
-			for(unsigned j = top_left.x; j < bottom_right.x; j++) {
-				if(i%2)
-					world[i][j].type = grain::type::sand;
+		for(unsigned y = top_left.y; y < bottom_right.y; y++) {
+			for(unsigned x = top_left.x; x < bottom_right.x; x++) {
+				if(x%2)
+					world[y][x].type = grain::type::sand;
 				else
-					world[i][j].type = grain::type::water;
+					world[y][x].type = grain::type::water;
 			}
 		}
 	}
