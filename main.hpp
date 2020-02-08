@@ -14,7 +14,7 @@ constexpr auto to_underlying(ENUM_T my_enum) -> std::underlying_type_t<ENUM_T> {
 }
 
 
-struct grain {
+struct matter {
 	enum class type : unsigned {
 		none,
 		sand,
@@ -29,9 +29,9 @@ struct grain {
 		{255,255,0,0},
 		{0,0,255,0},
 	};
-	static_assert(sizeof(colours) / sizeof(*colours) == to_underlying(type::COUNT), "missing a grain colour");
+	static_assert(sizeof(colours) / sizeof(*colours) == to_underlying(type::COUNT), "missing a matter colour");
 
-	grain::type type;
+	matter::type type;
 	bool is_active = false;
 };
 
@@ -40,6 +40,10 @@ template<typename NUM>
 struct vec2 {
 	NUM x;
 	NUM y;
+
+	void snprint(char* buf, size_t bufsize) const {
+		snprintf(buf, bufsize, "(%d, %d)", x, y);
+	}
 };
 
 using vec2u = vec2<unsigned>;
