@@ -17,6 +17,7 @@ void sleep_until_next(std::chrono::time_point<Clock> start_time) {
 	auto time_since_start = Clock::now() - start_time;
 	Duration Durations_since_start = duration_cast<Duration>(time_since_start);
 	time_point alarm = start_time + Durations_since_start + Duration(1);
+
 	std::this_thread::sleep_until(alarm);
 }
 
@@ -42,9 +43,10 @@ bool should_quit() {
 //  - version that respects aspect ratio
 //  - add panning & zooming, currently we view the entire world
 vec2u get_world_coords_stretch(vec2u screen_coords, vec2u screen_size) {
+	unsigned inverted_y = screen_size.y - screen_coords.y - 1;
 	return {
 		(screen_coords.x * WORLD_WIDTH) / screen_size.x,
-		(screen_coords.y * WORLD_HEIGHT) / screen_size.y
+		(inverted_y * WORLD_HEIGHT) / screen_size.y
 	};
 }
 
