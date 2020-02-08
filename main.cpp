@@ -6,8 +6,19 @@
 #include <condition_variable>
 #include <map>
 #include <cassert>
+#include <chrono>
 #include "print_mutex.hpp"
 
+
+template<typename Duration, typename Clock>
+void sleep_until_next(std::chrono::time_point<Clock> start_time) {
+	using namespace std::chrono;
+
+	auto time_since_start = Clock::now() - start_time;
+	Duration Durations_since_start = duration_cast<Duration>(time_since_start);
+	time_point alarm = start_time + Durations_since_start + Duration(1);
+	std::this_thread::sleep_until(alarm);
+}
 
 
 
@@ -37,12 +48,17 @@ vec2u get_world_coords_stretch(vec2u screen_coords, vec2u screen_size) {
 	};
 }
 
+template<typename frame>
 void draw_loop() {
 	thread_name = "draw";
 	auto fb = framebuf::make_unique();
 	vec2u screen_size{fb->vinfo.xres, fb->vinfo.yres};
 
+	std::chrono::time_point start_time = std::chrono::steady_clock::now();
+
 	while(!should_quit()) {
+		sleep_until_next<frame>(start_time);
+
 		signal_begin_draw.notify_all();
 
 		for(unsigned x = 0; x < screen_size.x; x++) {
@@ -123,15 +139,36 @@ void simulate() {
 }
 
 
-
+template<typename tick>
 void simulate(unsigned count) {
-	for(unsigned i = 0; i < count; i++)
+	std::chrono::time_point start_time = std::chrono::steady_clock::now();
+
+	for(unsigned i = 0; i < count; i++) {
+		sleep_until_next<tick>(start_time);
+
 		simulate();
+	}
 }
 
 int main(int argc, char **argv) {
+	using namespace std::chrono;
+
+	using frame = duration<int64_t, std::ratio<1,60>>;
+	using tick = duration<int64_t, std::ratio<1,10>>;
+
+	seconds one_second(1);
+	printf("frames per sec: %ld\n", frame(one_second).count());
+	printf("ticks  per sec: %ld\n", tick(one_second).count());
+
+
+
+
+
+
+
 	thread_name = "main";
-	std::thread draw_thread(draw_loop);
+	std::thread draw_thread(draw_loop<frame>);
+	//draw_loop<frames>();
 
 
 
@@ -151,7 +188,7 @@ int main(int argc, char **argv) {
 
 
 
-	simulate(200);
+	simulate<tick>(200);
 
 
 
