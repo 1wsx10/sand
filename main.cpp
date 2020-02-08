@@ -77,6 +77,7 @@ void draw_loop() {
 // returns true if we moved it
 bool simulate_grain(vec2u matter_coord) {
 	if(matter_coord.y == 0) return false;
+
 	// check below
 	if(world[matter_coord.y - 1][matter_coord.x].type == matter::type::none) {
 		// move down
@@ -85,8 +86,10 @@ bool simulate_grain(vec2u matter_coord) {
 	} else {
 		// check below to either side
 		int left_or_right = (rand()%2) * 2 - 1;
-		world[matter_coord.y - 1][matter_coord.x + left_or_right] = world[matter_coord.y][matter_coord.x];
-		world[matter_coord.y][matter_coord.x] = {matter::type::none, false};
+		if(world[matter_coord.y - 1][matter_coord.x + left_or_right].type == matter::type::none) {
+			world[matter_coord.y - 1][matter_coord.x + left_or_right] = world[matter_coord.y][matter_coord.x];
+			world[matter_coord.y][matter_coord.x] = {matter::type::none, false};
+		}
 	}
 
 	if(matter_coord.y < WORLD_HEIGHT-1) {
@@ -151,27 +154,21 @@ void simulate(unsigned count) {
 }
 
 int main(int argc, char **argv) {
-	using namespace std::chrono;
+	using frame = std::chrono::duration<int64_t, std::ratio<1,60>>;
+	using tick = std::chrono::duration<int64_t, std::ratio<1,20>>;
 
-	using frame = duration<int64_t, std::ratio<1,60>>;
-	using tick = duration<int64_t, std::ratio<1,10>>;
-
-	seconds one_second(1);
+	std::chrono::seconds one_second(1);
 	printf("frames per sec: %ld\n", frame(one_second).count());
 	printf("ticks  per sec: %ld\n", tick(one_second).count());
 
 
 
-
-
-
-
 	thread_name = "main";
 	std::thread draw_thread(draw_loop<frame>);
-	//draw_loop<frames>();
 
 
 
+	// populate the world with some matter
 	vec2u top_left = {10, 10};
 	vec2u bottom_right = {70, 40};
 	{
