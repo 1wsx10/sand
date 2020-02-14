@@ -32,7 +32,7 @@ struct matter {
 	static_assert(sizeof(colours) / sizeof(*colours) == to_underlying(type::COUNT), "missing a matter colour");
 
 	matter::type type;
-	bool is_active = false;
+	bool is_active = true;
 };
 
 

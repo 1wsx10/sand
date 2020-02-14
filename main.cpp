@@ -27,12 +27,18 @@ std::condition_variable signal_begin_draw;
 std::mutex              signal_begin_draw_mutex;
 
 matter world[WORLD_HEIGHT][WORLD_WIDTH];
+#if 1
 std::mutex world_mutex;
-//print_mutex world_mutex("world_mutex");
+#else
+print_mutex world_mutex("world_mutex");
+#endif
 
 bool       g_quit = false;
+#if 1
 std::mutex quit_mutex;
-//print_mutex quit_mutex("quit_mutex");
+#else
+print_mutex quit_mutex("quit_mutex");
+#endif
 
 bool should_quit() {
 	LG_alias g(quit_mutex, "should_quit");
@@ -63,12 +69,19 @@ void draw_loop() {
 
 		signal_begin_draw.notify_all();
 
-		for(unsigned x = 0; x < screen_size.x; x++) {
 			LG_alias g(world_mutex, "draw_loop");
-			for(unsigned y = 0; y < screen_size.y; y++) {
+		for(unsigned y = 0; y < screen_size.y; y++) {
+			for(unsigned x = 0; x < screen_size.x; x++) {
 				vec2u world_coords = get_world_coords_stretch({x,y}, screen_size);
 
-				pixel_ pix(x, y, (matter::colours[to_underlying(world[world_coords.y][world_coords.x].type)]));
+				RGBT pixel_colour = matter::colours[to_underlying(world[world_coords.y][world_coords.x].type)];
+				pixel_colour.r *= (0.5f * world[world_coords.y][world_coords.x].is_active) + 0.5f;
+				pixel_colour.g *= (0.5f * world[world_coords.y][world_coords.x].is_active) + 0.5f;
+				pixel_colour.b *= (0.5f * world[world_coords.y][world_coords.x].is_active) + 0.5f;
+				pixel_colour.t *= (0.5f * world[world_coords.y][world_coords.x].is_active) + 0.5f;
+
+
+				pixel_ pix(x, y, pixel_colour);
 				draw(fb.get(), &pix);
 			}
 		}
@@ -91,7 +104,7 @@ bool simulate_grain(vec2u matter_coord) {
 		if(world[matter_coord.y - 1][matter_coord.x + left_or_right].type == matter::type::none) {
 			world[matter_coord.y - 1][matter_coord.x + left_or_right] = world[matter_coord.y][matter_coord.x];
 			world[matter_coord.y][matter_coord.x] = {matter::type::none, false};
-		}
+		} else return false;
 	}
 
 	if(matter_coord.y < WORLD_HEIGHT-1) {
@@ -109,8 +122,9 @@ bool simulate_liquid(vec2u matter_coord) {
 	return false;
 }
 
-void simulate(vec2u matter_coord) {
+bool simulate_pixel(vec2u matter_coord) {
 	matter& matter = world[matter_coord.y][matter_coord.x];
+	if(!matter.is_active) return false;
 
 #if 0
 	{
@@ -121,47 +135,59 @@ void simulate(vec2u matter_coord) {
 #endif
 	switch(matter.type) {
 		case matter::type::none:
+			return false;
 			break;
+
 		case matter::type::sand:
-			simulate_grain(matter_coord);
+			return simulate_grain(matter_coord);
 			break;
+
 		case matter::type::water:
-			simulate_liquid(matter_coord);
+			return simulate_liquid(matter_coord);
 			break;
+
 		case matter::type::COUNT:
 		default:
-			printf("ERROR unknown matter type\n");
+			printf("ERROR unknown matter type %d\n", to_underlying(matter.type));
 			assert(false);
 	}
 }
 
-void simulate() {
+void simulate_screen() {
+
 	for(unsigned y = 0; y < WORLD_HEIGHT; y++) {
+		std::unique_lock lock(world_mutex);
+
+
 		for(unsigned x = 0; x < WORLD_WIDTH; x++) {
-			simulate((vec2u){x,y});
+			bool still_active = simulate_pixel((vec2u){x,y});
+			if(!still_active)
+				world[y][x].is_active = false;
 		}
 	}
 }
 
 
 template<typename tick>
-void simulate(unsigned count) {
+void simulate_for(unsigned count) {
 	std::chrono::time_point start_time = std::chrono::steady_clock::now();
 
 	for(unsigned i = 0; i < count; i++) {
 		sleep_until_next<tick>(start_time);
 
-		simulate();
+		simulate_screen();
 	}
 }
 
 int main(int argc, char **argv) {
 	using frame = std::chrono::duration<int64_t, std::ratio<1,60>>;
-	using tick = std::chrono::duration<int64_t, std::ratio<1,20>>;
+	using tick = std::chrono::duration<int64_t, std::ratio<1,10>>;
 
 	std::chrono::seconds one_second(1);
 	printf("frames per sec: %ld\n", frame(one_second).count());
 	printf("ticks  per sec: %ld\n", tick(one_second).count());
+
+	srand(std::chrono::steady_clock::now().time_since_epoch().count());
 
 
 
@@ -187,7 +213,7 @@ int main(int argc, char **argv) {
 
 
 
-	simulate<tick>(200);
+	simulate_for<tick>(200);
 
 
 
