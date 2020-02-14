@@ -81,3 +81,9 @@ template<typename MUTEX>
 struct LG_alias : public std::lock_guard<MUTEX> {
 	LG_alias(MUTEX& mutex, const char* name) : std::lock_guard<MUTEX>(mutex) {}
 };
+
+// if we have a print_mutex, become a print_LG
+template<>
+struct LG_alias<print_mutex> : public print_LG<print_mutex> {
+	LG_alias(print_mutex& mutex, const char* name) : print_LG<print_mutex>(mutex, name) {}
+};

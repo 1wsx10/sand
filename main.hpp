@@ -48,3 +48,4 @@ struct vec2 {
 
 using vec2u = vec2<unsigned>;
 using vec2i = vec2<int>;
+

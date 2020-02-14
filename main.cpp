@@ -22,6 +22,13 @@ void sleep_until_next(std::chrono::time_point<Clock> start_time) {
 }
 
 
+#define SLOW_SIMULATE 0
+#if SLOW_SIMULATE
+// # of simulate ticks per second, max is framerate
+using slow_simulate_ratio = std::ratio<1,60>;
+// time duration for showing a single line of simulation
+using intermediate_tick = std::chrono::duration<int64_t, slow_simulate_ratio>;
+#endif
 
 std::condition_variable signal_begin_draw;
 std::mutex              signal_begin_draw_mutex;
@@ -31,6 +38,9 @@ matter world[WORLD_HEIGHT][WORLD_WIDTH];
 std::mutex world_mutex;
 #else
 print_mutex world_mutex("world_mutex");
+#endif
+#if SLOW_SIMULATE
+unsigned simulate_line = 0;// covered by world_mutex
 #endif
 
 bool       g_quit = false;
@@ -67,9 +77,9 @@ void draw_loop() {
 	while(!should_quit()) {
 		sleep_until_next<frame>(start_time);
 
+		LG_alias g(world_mutex, "draw_loop");
 		signal_begin_draw.notify_all();
 
-			LG_alias g(world_mutex, "draw_loop");
 		for(unsigned y = 0; y < screen_size.y; y++) {
 			for(unsigned x = 0; x < screen_size.x; x++) {
 				vec2u world_coords = get_world_coords_stretch({x,y}, screen_size);
@@ -80,6 +90,11 @@ void draw_loop() {
 				pixel_colour.b *= (0.5f * world[world_coords.y][world_coords.x].is_active) + 0.5f;
 				pixel_colour.t *= (0.5f * world[world_coords.y][world_coords.x].is_active) + 0.5f;
 
+#if SLOW_SIMULATE
+				if(world_coords.y == simulate_line) {
+					pixel_colour.b = 128;
+				}
+#endif
 
 				pixel_ pix(x, y, pixel_colour);
 				draw(fb.get(), &pix);
@@ -154,10 +169,18 @@ bool simulate_pixel(vec2u matter_coord) {
 }
 
 void simulate_screen() {
+#if SLOW_SIMULATE
+	std::chrono::time_point start_time = std::chrono::steady_clock::now();
+#endif
 
 	for(unsigned y = 0; y < WORLD_HEIGHT; y++) {
 		std::unique_lock lock(world_mutex);
 
+#if SLOW_SIMULATE
+		simulate_line = y;
+		signal_begin_draw.wait(lock);
+		sleep_until_next<intermediate_tick>(start_time);
+#endif
 
 		for(unsigned x = 0; x < WORLD_WIDTH; x++) {
 			bool still_active = simulate_pixel((vec2u){x,y});
@@ -173,6 +196,7 @@ void simulate_for(unsigned count) {
 	std::chrono::time_point start_time = std::chrono::steady_clock::now();
 
 	for(unsigned i = 0; i < count; i++) {
+		//LG_alias g(world_mutex, "simulate_loop");
 		sleep_until_next<tick>(start_time);
 
 		simulate_screen();
